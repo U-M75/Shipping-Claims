@@ -61,17 +61,45 @@ CLAIMS_APP_PIN=your-internal-pin
 
 Keep `SUPABASE_SERVICE_KEY` private. Never use it in a `VITE_` variable or commit it to GitHub.
 
-Optional future integration variables:
+Shopify integration variables:
 
 ```text
 SHOPIFY_STORE=your-store.myshopify.com
 SHOPIFY_ACCESS_TOKEN=your-admin-token
 SHOPIFY_API_VERSION=2025-10
-SLACK_BOT_TOKEN=xoxb-your-token
-SLACK_SHIPPING_CLAIMS_CHANNEL_ID=C0123456789
 ```
 
-The MVP does not pretend Slack or Shopify is connected until real credentials are added.
+Required Shopify Admin API scopes for order lookup:
+
+```text
+read_orders
+read_products
+```
+
+Optional scopes:
+
+```text
+read_all_orders
+read_customers
+read_locations
+read_inventory
+```
+
+Slack notification variables:
+
+```text
+SLACK_BOT_TOKEN=xoxb-your-token
+SLACK_SHIPPING_CLAIMS_CHANNEL_ID=C0123456789
+APP_BASE_URL=https://your-app.vercel.app
+```
+
+Required Slack bot scope for the current notification integration:
+
+```text
+chat:write
+```
+
+The browser form can use the Shopify lookup button when Shopify credentials are configured. New claims send a structured Slack notification when the Slack variables are configured. No credentials are fabricated or included in the repository.
 
 ## API routes
 

@@ -24,3 +24,9 @@ body { margin:0; min-width:320px; background:#fbf8fc; } button,input,select,text
 @media (max-width: 1000px){.sidebar{width:215px}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width: 760px){.app-shell{display:block}.sidebar{width:100%;height:auto;min-height:auto;position:relative;padding:12px}.side-brand{padding:0 8px 12px}.side-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding-top:10px}.side-nav button{font-size:10px;padding:8px 5px;justify-content:center;flex-direction:column;gap:3px}.side-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 8px 0}.main-content{padding:22px 13px 40px}.content-header{align-items:stretch;flex-direction:column}.header-actions{justify-content:flex-start;flex-wrap:wrap}.dashboard-grid,.two-panels,.detail-grid,.settings-grid{grid-template-columns:1fr}.form-grid.two,.form-grid.three{grid-template-columns:1fr}.choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.submit-bar{align-items:stretch;flex-direction:column}.submit-bar .primary-button{width:100%}}
 @media (max-width: 480px){.stat-grid{grid-template-columns:1fr 1fr}.detail-info-grid{grid-template-columns:1fr}.side-nav{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.shopify-lookup { display: flex; gap: 7px; }
+.shopify-lookup input { flex: 1; min-width: 0; }
+.lookup-button { border: 1px solid #ddcfdb; border-radius: 9px; background: #fff7fa; color: #b45d78; padding: 0 10px; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.lookup-button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 480px) { .shopify-lookup { flex-direction: column; } .lookup-button { min-height: 38px; } }

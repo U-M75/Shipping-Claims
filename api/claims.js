@@ -18,6 +18,54 @@ async function signedEvidence(supabase, rows) {
   }))
 }
 
+function slackSafe(value) {
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+async function sendSlackClaim(claim, items) {
+  const token = String(process.env.SLACK_BOT_TOKEN || '').trim()
+  const channel = String(process.env.SLACK_SHIPPING_CLAIMS_CHANNEL_ID || '').trim()
+  if (!token || !channel) return { sent: false, skipped: true }
+
+  const base = String(process.env.APP_BASE_URL || '').trim().replace(/\/$/, '')
+  const claimUrl = base ? `${base}/?view=claim&id=${encodeURIComponent(claim.id)}` : ''
+  const itemLines = (items || []).map(item =>
+    `• ${slackSafe(item.sku || item.product_name || 'Item')} — ${slackSafe(item.quantity)} unit(s)${item.issue_type ? ` — ${slackSafe(item.issue_type)}` : ''}`
+  ).join('\n') || '• No item details provided'
+
+  const message = [
+    ':rotating_light: *NEW SHIPPING CLAIM*',
+    '',
+    `*Claim:* ${slackSafe(claim.claim_number)}`,
+    `*Order:* ${slackSafe(claim.order_number)}`,
+    `*Customer:* ${slackSafe(claim.customer_name)}`,
+    `*Claim Type:* ${slackSafe((claim.claim_types || []).join(' / '))}`,
+    `*Fulfilled By:* ${slackSafe(claim.fulfilled_by || 'Not assigned')}`,
+    `*Carrier:* ${slackSafe(claim.carrier || 'Unknown')}`,
+    `*Resolution:* ${slackSafe(claim.resolution || 'Pending')}`,
+    `*Root Cause:* ${slackSafe(claim.root_cause || 'Unknown')}`,
+    `*Status:* ${slackSafe(claim.claim_status)}`,
+    `*Owner:* ${slackSafe(claim.owner || 'Unassigned')}`,
+    '',
+    '*Affected Items:*',
+    itemLines,
+    '',
+    claimUrl ? `:link: <${claimUrl}|View Claim>` : ':link: View Claim in the Shipping Claims app',
+  ].join('\n')
+
+  const response = await fetch('https://slack.com/api/chat.postMessage', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ channel, text: message }),
+  })
+  const data = await response.json()
+  if (!response.ok || !data.ok) throw new Error(data.error || `Slack HTTP ${response.status}`)
+  return { sent: true, ts: data.ts }
+}
+
 function claimHistoryEntries(oldClaim, updates, user, comment) {
   const entries = []
   const fields = [
@@ -129,7 +177,15 @@ export default async function handler(req, res) {
         })
       }
 
-      return res.status(201).json({ success: true, claim: saved })
+      let slack = { sent: false, skipped: true }
+      try {
+        slack = await sendSlackClaim(saved, items)
+      } catch (slackError) {
+        console.error('Shipping claim Slack notification failed:', slackError)
+        slack = { sent: false, error: slackError.message }
+      }
+
+      return res.status(201).json({ success: true, claim: saved, slack })
     }
 
     if (req.method === 'PATCH') {
