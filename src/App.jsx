@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const CLAIM_TYPES = ['Missing Item', 'Swapped Item', 'Damaged Item', 'Short Shipment', 'Wrong Quantity', 'Wrong Product', 'Packaging Damage', 'Other']
 const ISSUE_TYPES = CLAIM_TYPES
@@ -41,6 +43,70 @@ function apiJson(url, options) {
   })
 }
 function titleCase(value) { return String(value || '').replace(/\b\w/g, c => c.toUpperCase()) }
+
+function downloadKpiPdf(report, month) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+  const ink = [61, 44, 56]
+  const pink = [255, 179, 197]
+  const muted = [130, 115, 126]
+  const monthLabel = new Date(`${month}-01T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  doc.setFillColor(...pink)
+  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 8, 'F')
+  doc.setFontSize(21)
+  doc.setTextColor(...ink)
+  doc.text('KSC Shipping Claims KPI Report', 34, 40)
+  doc.setFontSize(10)
+  doc.setTextColor(...muted)
+  doc.text(`${monthLabel} · Generated ${new Date().toLocaleString('en-US')}`, 34, 58)
+
+  autoTable(doc, {
+    startY: 78,
+    margin: { left: 34, right: 34 },
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 6 },
+    headStyles: { fillColor: pink, textColor: ink, fontStyle: 'bold' },
+    head: [['Total Claims', 'Open', 'Pending', 'Resolved', 'Items Affected', 'Claim Value', 'External Claims']],
+    body: [[
+      report.metrics.total,
+      report.metrics.open,
+      report.metrics.pending,
+      report.metrics.resolved,
+      report.metrics.itemsAffected,
+      money(report.metrics.claimValue),
+      report.metrics.external,
+    ]],
+  })
+
+  const sections = [
+    ['Claims by Type', report.byType || []],
+    ['Claims by Root Cause', report.byRootCause || []],
+    ['Claims by Resolution', report.byResolution || []],
+    ['Claims by Carrier', report.byCarrier || []],
+    ['Claims by Fulfilled By', report.byFulfilled || []],
+  ]
+
+  let y = (doc.lastAutoTable?.finalY || 130) + 24
+  for (const [title, rows] of sections) {
+    if (!rows.length) continue
+    if (y > 500) { doc.addPage(); y = 42 }
+    doc.setFontSize(12)
+    doc.setTextColor(...ink)
+    doc.text(title, 34, y)
+    autoTable(doc, {
+      startY: y + 8,
+      margin: { left: 34, right: 34 },
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [255, 242, 246], textColor: ink },
+      head: [['Category', 'Count']],
+      body: rows.map(row => [row.label, row.value]),
+    })
+    y = (doc.lastAutoTable?.finalY || y + 40) + 20
+  }
+
+  doc.save(`shipping-claims-kpi-${month}.pdf`)
+}
 
 function compressImage(file) {
   return new Promise((resolve, reject) => {
@@ -194,7 +260,7 @@ function ReportsPage() {
   useEffect(() => { generate() }, [month])
 
   return <>
-    <Header title="KPI Reports" eyebrow="Management reporting" action={<div className="header-actions"><input type="month" value={month} onChange={e => setMonth(e.target.value)} /><button className="primary-button" onClick={generate}>Generate report</button></div>} />
+    <Header title="KPI Reports" eyebrow="Management reporting" action={<div className="header-actions"><input type="month" value={month} onChange={e => setMonth(e.target.value)} /><button className="primary-button" onClick={generate}>Generate report</button>{data && <button className="secondary-button" onClick={() => downloadKpiPdf(data, month)}>Download PDF</button>}</div>} />
     {error && <div className="form-error">{error}</div>}
     {data && <><div className="stat-grid"><StatCard label="Total Claims" value={data.metrics.total} /><StatCard label="Items Affected" value={data.metrics.itemsAffected} tone="blue" /><StatCard label="Claim Value" value={money(data.metrics.claimValue)} tone="pink" /><StatCard label="External Claims" value={data.metrics.external} tone="gold" /></div><div className="dashboard-grid"><BarList title="Claims by Type" rows={data.byType} /><BarList title="Claims by Root Cause" rows={data.byRootCause} /><BarList title="Resolutions" rows={data.byResolution} /><BarList title="Carriers" rows={data.byCarrier} /></div></>}
   </>
