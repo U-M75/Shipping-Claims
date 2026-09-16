@@ -131,7 +131,7 @@ function SubmitClaim({ user, onCreated, setPage }) {
     try {
       const data = await apiJson(`/api/shopify-order?order=${encodeURIComponent(form.order_number)}`)
       const order = data.order
-      setForm(prev => ({ ...prev, customer_name: order.customer_name || prev.customer_name, date_shipped: order.date_shipped || prev.date_shipped, carrier: order.carrier || prev.carrier, items: order.items?.length ? order.items : prev.items }))
+      setForm(prev => ({ ...prev, customer_name: order.customer_name || prev.customer_name, date_shipped: order.date_shipped || prev.date_shipped, carrier: order.carrier || prev.carrier, location: order.location_name || prev.location, items: order.items?.length ? order.items : prev.items }))
     } catch (err) { setError(err.message) } finally { setShopifyBusy(false) }
   }
   async function submit(e) { e.preventDefault(); setError(''); if (!form.order_number || !form.customer_name || !form.claim_types.length || !form.items.some(item => item.sku || item.product_name)) { setError('Please complete Order Number, Customer Name, at least one Claim Type, and one affected item.'); return } setBusy(true); try { const data = await apiJson('/api/claims', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, submitted_by: user?.name || 'Internal user', items: form.items.filter(item => item.sku || item.product_name) }) }); alert(`Shipping claim ${data.claim.claim_number} has been created.`); onCreated(data.claim) } catch (err) { setError(err.message) } finally { setBusy(false) } }

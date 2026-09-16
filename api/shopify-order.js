@@ -27,6 +27,7 @@ const ORDER_QUERY = `
         customer { displayName email }
         fulfillments(first: 10) {
           createdAt
+          location { id name }
           trackingInfo { company number url }
         }
         lineItems(first: 100) {
@@ -67,6 +68,8 @@ export default async function handler(req, res) {
         date_delivered: '',
         carrier: tracking?.company || 'Unknown',
         tracking_url: tracking?.url || '',
+        location_id: fulfillment?.location?.id || '',
+        location_name: fulfillment?.location?.name || '',
         items: (order.lineItems?.nodes || []).map(item => ({
           sku: item.sku || '',
           product_name: item.name || item.title || item.variant?.title || '',

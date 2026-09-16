@@ -69,21 +69,25 @@ SHOPIFY_ACCESS_TOKEN=your-admin-token
 SHOPIFY_API_VERSION=2025-10
 ```
 
-Required Shopify Admin API scopes for order lookup:
+Required Shopify Admin API scopes for the current order lookup, customer, product, and location fields:
 
 ```text
 read_orders
 read_products
+read_customers
+read_locations
 ```
 
 Optional scopes:
 
 ```text
 read_all_orders
-read_customers
-read_locations
 read_inventory
+read_returns
+read_order_edits
 ```
+
+`read_all_orders` is needed only when looking up orders outside Shopify's default recent-order access window and may require Shopify approval.
 
 Slack notification variables:
 
