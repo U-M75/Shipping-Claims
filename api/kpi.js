@@ -18,7 +18,12 @@ export default async function handler(req, res) {
     const to = req.query?.to
     let query = supabase.from('shipping_claims').select('*, shipping_claim_items(*)').order('created_at', { ascending: false }).limit(2000)
     if (from) query = query.gte('created_at', from)
-    if (to) query = query.lte('created_at', `${to}T23:59:59.999Z`)
+    if (to) {
+      const toValue = /^\d{4}-\d{2}-\d{2}$/.test(String(to))
+        ? `${to}T23:59:59.999Z`
+        : String(to)
+      query = query.lte('created_at', toValue)
+    }
     const { data: claims, error } = await query
     if (error) throw error
 

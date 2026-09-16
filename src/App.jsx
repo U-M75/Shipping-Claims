@@ -92,7 +92,7 @@ function Login({ onLogin }) {
 function Sidebar({ page, setPage, user, onLogout }) {
   const nav = [
     ['dashboard', '⌂', 'Dashboard'], ['submit', '+', 'Submit Claim'], ['claims', '▤', 'All Claims'], ['open', '◷', 'Open Claims'],
-    ['external', '↗', 'Vendor/Carrier Claims'], ['recurring', '◈', 'Recurring Issues'], ['reports', '▥', 'KPI Reports'], ['bread', '▱', 'Bread Display Tracker'], ['settings', '⚙', 'Settings'],
+    ['external', '↗', 'Vendor/Carrier Claims'], ['recurring', '◈', 'Common Issues'], ['reports', '▥', 'KPI Reports'], ['settings', '⚙', 'System Settings'],
   ]
   return <aside className="sidebar"><div className="side-brand"><img src="/ksc-logo.png" alt="KSC" /><div><strong>KSC Claims</strong><span>Resolution System</span></div></div><div className="side-nav">{nav.map(([id, icon, label]) => <button key={id} className={page === id ? 'active' : ''} onClick={() => setPage(id)}><span>{icon}</span>{label}</button>)}</div><div className="side-bottom"><div className="user-chip"><div className="avatar">{String(user?.name || 'U').slice(0, 1).toUpperCase()}</div><div><strong>{user?.name || 'Team member'}</strong><span>Internal user</span></div></div><button className="logout-button" onClick={onLogout}>Sign out</button></div></aside>
 }
@@ -173,10 +173,34 @@ function ClaimDetail({ id, setPage, user }) {
 }
 function Info({ label, value }) { return <div className="info-cell"><span>{label}</span><strong>{value || '—'}</strong></div> }
 
-function ReportsPage() { const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); const [data, setData] = useState(null); const [error, setError] = useState(''); async function generate() { try { const [year, m] = month.split('-').map(Number); const from = new Date(year, m - 1, 1).toISOString(); const to = new Date(year, m, 0, 23, 59, 59).toISOString(); setData(await apiJson(`/api/kpi?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)) } catch (e) { setError(e.message) } } return <><Header title="KPI Reports" eyebrow="Management reporting" action={<div className="header-actions"><input type="month" value={month} onChange={e => setMonth(e.target.value)} /><button className="primary-button" onClick={generate}>Generate report</button></div>} />{error && <div className="form-error">{error}</div>}{data && <><div className="stat-grid"><StatCard label="Total Claims" value={data.metrics.total} /><StatCard label="Items Affected" value={data.metrics.itemsAffected} tone="blue" /><StatCard label="Claim Value" value={money(data.metrics.claimValue)} tone="pink" /><StatCard label="External Claims" value={data.metrics.external} tone="gold" /></div><div className="dashboard-grid"><BarList title="Claims by Type" rows={data.byType} /><BarList title="Claims by Root Cause" rows={data.byRootCause} /><BarList title="Resolutions" rows={data.byResolution} /><BarList title="Carriers" rows={data.byCarrier} /></div></>}</> }
+function ReportsPage() {
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [data, setData] = useState(null)
+  const [error, setError] = useState('')
+
+  async function generate() {
+    try {
+      setError('')
+      const [year, monthNumber] = month.split('-').map(Number)
+      const lastDay = new Date(year, monthNumber, 0).getDate()
+      const from = `${month}-01`
+      const to = `${month}-${String(lastDay).padStart(2, '0')}`
+      setData(await apiJson(`/api/kpi?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`))
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  useEffect(() => { generate() }, [month])
+
+  return <>
+    <Header title="KPI Reports" eyebrow="Management reporting" action={<div className="header-actions"><input type="month" value={month} onChange={e => setMonth(e.target.value)} /><button className="primary-button" onClick={generate}>Generate report</button></div>} />
+    {error && <div className="form-error">{error}</div>}
+    {data && <><div className="stat-grid"><StatCard label="Total Claims" value={data.metrics.total} /><StatCard label="Items Affected" value={data.metrics.itemsAffected} tone="blue" /><StatCard label="Claim Value" value={money(data.metrics.claimValue)} tone="pink" /><StatCard label="External Claims" value={data.metrics.external} tone="gold" /></div><div className="dashboard-grid"><BarList title="Claims by Type" rows={data.byType} /><BarList title="Claims by Root Cause" rows={data.byRootCause} /><BarList title="Resolutions" rows={data.byResolution} /><BarList title="Carriers" rows={data.byCarrier} /></div></>}
+  </>
+}
 function RecurringPage() { const [data, setData] = useState(null); useEffect(() => { apiJson('/api/kpi').then(setData).catch(() => {}) }, []); return <><Header title="Recurring Issues" eyebrow="Patterns worth fixing" />{data && <div className="panel"><div className="panel-title"><h3>Top problem SKUs</h3><span className="muted">Ranked by claim count</span></div><MiniTable rows={data.recurring || []} headers={['SKU / Product', 'Claims', 'Affected Qty', 'Claim Value']} render={row => [<span className="strong-cell">{row.sku}<small>{row.product}</small></span>, row.claims, row.quantity, money(row.value)]} /></div>}</> }
-function BreadPage() { return <><Header title="Bread Display Tracker" eyebrow="Specialized recurring issue" action={<button className="primary-button">+ Add display claim</button>} /><div className="stat-grid"><StatCard label="Displays Shipped" value="—" /><StatCard label="Reported Damaged" value="—" tone="red" /><StatCard label="Replacement Required" value="—" tone="gold" /><StatCard label="Carrier Claims" value="—" tone="blue" /></div><div className="panel empty-state"><div className="empty-icon">▱</div><h2>Ready for the Bread Display workflow</h2><p>This specialized view is ready to connect to shipping claims tagged as Bread Display damage.</p></div></> }
-function SettingsPage() { return <><Header title="Settings" eyebrow="System configuration" /><div className="settings-grid"><div className="panel"><h3>Current MVP configuration</h3><p className="muted">Claims are stored in Supabase through server-side API routes. Shopify and Slack integrations can be enabled through environment variables without changing the employee form.</p><div className="setting-row"><span>Database</span><strong>Supabase server API</strong></div><div className="setting-row"><span>Shopify</span><strong>Integration layer ready</strong></div><div className="setting-row"><span>Slack</span><strong>Integration layer ready</strong></div></div><div className="panel"><h3>Status definitions</h3>{STATUSES.map(status => <div className="setting-row" key={status}><StatusBadge status={status} /><span>{status === 'Open' ? 'Newly submitted claim' : status === 'In Progress' ? 'Someone is actively working it' : status === 'Pending' ? 'Waiting on customer, vendor, or carrier' : status === 'Resolved' ? 'Resolution completed' : 'Closed and archived'}</span></div>)}</div></div></> }
+function SettingsPage() { return <><Header title="System Settings" eyebrow="Claims workflow" /><div className="settings-grid"><div className="panel"><h3>Claims workflow</h3><p className="muted">Claims are stored in Supabase and every important status/owner change is recorded in the claim history.</p><div className="setting-row"><span>Claim number format</span><strong>SC-YYYY-0001</strong></div><div className="setting-row"><span>Normal aging</span><strong>0–2 days</strong></div><div className="setting-row"><span>Follow-up aging</span><strong>3–6 days</strong></div><div className="setting-row"><span>Overdue aging</span><strong>7+ days</strong></div></div><div className="panel"><h3>Status definitions</h3>{STATUSES.map(status => <div className="setting-row" key={status}><StatusBadge status={status} /><span>{status === 'Open' ? 'Newly submitted claim' : status === 'In Progress' ? 'Someone is actively working it' : status === 'Pending' ? 'Waiting on customer, vendor, or carrier' : status === 'Resolved' ? 'Resolution completed' : 'Closed and archived'}</span></div>)}</div><div className="panel"><h3>Recurring issues</h3><p className="muted">Common claim categories and recurring SKUs are calculated from structured claim records. Import historical Slack data to make these insights complete.</p></div></div></> }
 
 export default function App() {
   const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('claims_user') || 'null') } catch { return null } })
@@ -194,7 +218,6 @@ export default function App() {
   else if (page === 'external') content = <ClaimsPage setPage={setPage} status="Pending" />
   else if (page === 'recurring') content = <RecurringPage />
   else if (page === 'reports') content = <ReportsPage />
-  else if (page === 'bread') content = <BreadPage />
   else if (page === 'settings') content = <SettingsPage />
   else if (page.startsWith('claim:')) content = <ClaimDetail id={page.split(':')[1]} setPage={setPage} user={user} />
   return <div className="app-shell"><Sidebar page={page.split(':')[0]} setPage={setPage} user={user} onLogout={logout} /><main className="main-content">{content}</main></div>

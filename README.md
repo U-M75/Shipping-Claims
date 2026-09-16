@@ -18,7 +18,7 @@ A production-ready internal claims workflow for Kawaii Slime Company. It replace
 - Evidence image upload to Supabase Storage
 - Recurring issue view
 - Monthly KPI report view
-- Bread Display Tracker starter view
+- Common Issues / Recurring Issues view (no Bread Crumb tracker; this is a general shipping claims system)
 - Dashboard filters and search
 - PDF-ready reporting structure
 - Historical CSV import API architecture
