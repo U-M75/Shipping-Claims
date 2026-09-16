@@ -95,6 +95,7 @@ Slack notification variables:
 SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_SHIPPING_CLAIMS_CHANNEL_ID=C0123456789
 APP_BASE_URL=https://your-app.vercel.app
+CRON_SECRET=your-scheduler-secret
 ```
 
 Required Slack bot scope for the current notification integration:
@@ -113,6 +114,7 @@ GET  /api/claims
 POST /api/claims
 PATCH /api/claims
 GET  /api/kpi
+GET/POST /api/scheduler-kpi
 ```
 
 ## Deploy on Vercel
@@ -125,6 +127,31 @@ The app is a Vite + React app with serverless API routes.
 4. Run the Supabase SQL schema.
 5. Add Vercel environment variables.
 6. Deploy.
+
+## Local development
+
+```bash
+npm install
+npm run dev
+```
+
+## Scheduled KPI Slack report
+
+The scheduler route posts a pink-divider KPI summary to the configured shipping claims Slack channel:
+
+```text
+GET/POST /api/scheduler-kpi
+```
+
+For a quick test, use an external scheduler such as cron-job.org every 2 minutes with:
+
+```text
+https://your-app.vercel.app/api/scheduler-kpi?secret=your-scheduler-secret
+```
+
+After confirming it works, change the external schedule to the first day of every month. Vercel Hobby's built-in cron may not allow a 2-minute schedule, so the external scheduler is intentional.
+
+The KPI Reports page also generates the current month automatically and has a Download PDF button.
 
 ## Local development
 

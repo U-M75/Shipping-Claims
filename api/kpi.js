@@ -77,6 +77,7 @@ export default async function handler(req, res) {
       byCarrier: Object.entries(byCarrier).map(([label, value]) => ({ label, value })),
       byFulfilled: Object.entries(byFulfilled).map(([label, value]) => ({ label, value })),
       topSkus: recurring,
+      productBreakdown: Object.values(skuMap).sort((a, b) => b.claims - a.claims),
       openClaims: openClaims.slice(0, 12),
       recurring,
     })

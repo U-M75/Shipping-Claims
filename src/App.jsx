@@ -84,6 +84,8 @@ function downloadKpiPdf(report, month) {
     ['Claims by Resolution', report.byResolution || []],
     ['Claims by Carrier', report.byCarrier || []],
     ['Claims by Fulfilled By', report.byFulfilled || []],
+    ['Affected Products / SKUs', (report.productBreakdown || []).map(row => ({ label: `${row.sku} — ${row.product}`, value: `${row.claims} claim(s) · ${row.quantity} unit(s) · ${money(row.value)}` }))],
+    ['Open Claims', (report.openClaims || []).map(row => ({ label: `${row.claim_number} — ${row.order_number} — ${row.customer_name}`, value: `${row.claim_status} · ${row.days_open} day(s) open` }))],
   ]
 
   let y = (doc.lastAutoTable?.finalY || 130) + 24
