@@ -96,12 +96,14 @@ SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_SHIPPING_CLAIMS_CHANNEL_ID=C0123456789
 APP_BASE_URL=https://your-app.vercel.app
 CRON_SECRET=your-scheduler-secret
+REPORT_TIMEZONE=America/Los_Angeles
 ```
 
-Required Slack bot scope for the current notification integration:
+Required Slack bot scopes for notifications and scheduled PDF delivery:
 
 ```text
 chat:write
+files:write
 ```
 
 The browser form can use the Shopify lookup button when Shopify credentials are configured. New claims send a structured Slack notification when the Slack variables are configured. No credentials are fabricated or included in the repository.
@@ -137,7 +139,7 @@ npm run dev
 
 ## Scheduled KPI Slack report
 
-The scheduler route posts a pink-divider KPI summary to the configured shipping claims Slack channel:
+The scheduler route sends the KPI PDF only to the configured shipping claims Slack channel. It does not post a separate text summary message:
 
 ```text
 GET/POST /api/scheduler-kpi
