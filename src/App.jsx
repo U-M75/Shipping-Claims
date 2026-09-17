@@ -100,7 +100,7 @@ function Login({ onLogin }) {
     } catch (err) { setError(err.message) } finally { setLoading(false) }
   }
   return <div className="login-page"><div className="login-orb one" /><div className="login-orb two" /><div className="login-card">
-    <img src="/ksc-logo.png" alt="KSC" /><span className="eyebrow">Internal operations</span><h1>Shipping Claims</h1><p>KSC Shipping Claims & Resolution System</p>
+    <img src="/ksc-logo.png" alt="Kawaii Slime Company" /><h1>Shipping Claims</h1><p>KSC Shipping Claims & Resolution System</p>
     <form onSubmit={submit}><label>Team member<input value={name} onChange={e => setName(e.target.value)} placeholder="Your name" /></label><label>PIN<input value={pin} onChange={e => setPin(e.target.value)} type="password" inputMode="numeric" placeholder="Enter PIN" /></label>{error && <div className="form-error">{error}</div>}<button className="primary-button" disabled={loading}>{loading ? 'Checking…' : 'Enter system →'}</button></form>
   </div></div>
 }
@@ -110,7 +110,7 @@ function Sidebar({ page, setPage, user, onLogout }) {
     ['dashboard', '⌂', 'Dashboard'], ['submit', '+', 'Submit Claim'], ['claims', '▤', 'All Claims'], ['open', '◷', 'Open Claims'],
     ['external', '↗', 'Vendor/Carrier Claims'], ['recurring', '◈', 'Common Issues'], ['reports', '▥', 'KPI Reports'], ['settings', '⚙', 'System Settings'],
   ]
-  return <aside className="sidebar"><div className="side-brand"><img src="/ksc-logo.png" alt="KSC" /><div><strong>Claims & Resolution</strong><span>Internal operations</span></div></div><div className="side-nav">{nav.map(([id, icon, label]) => <button key={id} className={page === id ? 'active' : ''} onClick={() => setPage(id)}><span>{icon}</span>{label}</button>)}</div><div className="side-bottom"><div className="user-chip"><div className="avatar">{String(user?.name || 'U').slice(0, 1).toUpperCase()}</div><div><strong>{user?.name || 'Team member'}</strong><span>Internal user</span></div></div><button className="logout-button" onClick={onLogout}>Sign out</button></div></aside>
+  return <aside className="sidebar"><div className="side-brand"><img src="/ksc-logo.png" alt="Kawaii Slime Company" /></div><div className="side-nav">{nav.map(([id, icon, label]) => <button key={id} className={page === id ? 'active' : ''} onClick={() => setPage(id)}><span>{icon}</span>{label}</button>)}</div><div className="side-bottom"><div className="user-chip"><div className="avatar">{String(user?.name || 'U').slice(0, 1).toUpperCase()}</div><div><strong>{user?.name || 'Team member'}</strong><span>Internal user</span></div></div><button className="logout-button" onClick={onLogout}>Sign out</button></div></aside>
 }
 
 function Header({ title, eyebrow, action }) {
