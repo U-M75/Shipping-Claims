@@ -29,28 +29,43 @@ async function sendSlackClaim(claim, items) {
 
   const base = String(process.env.APP_BASE_URL || '').trim().replace(/\/$/, '')
   const claimUrl = base ? `${base}/?view=claim&id=${encodeURIComponent(claim.id)}` : ''
-  const itemLines = (items || []).map(item =>
-    `• ${slackSafe(item.sku || item.product_name || 'Item')} — ${slackSafe(item.quantity)} unit(s)${item.issue_type ? ` — ${slackSafe(item.issue_type)}` : ''}`
-  ).join('\n') || '• No item details provided'
+  const pinkLine = ':pink::pink::pink::pink::pink::pink::pink::pink::pink::pink:'
+  const itemLines = (items || []).map(item => {
+    const itemName = slackSafe(item.sku || item.product_name || 'Item')
+    const quantity = slackSafe(item.quantity || 0)
+    const issue = item.issue_type ? `\n  _Issue:_ ${slackSafe(item.issue_type)}` : ''
+    return `• *${itemName}* — \`${quantity}\` unit(s)${issue}`
+  }).join('\n') || '• _No item details provided_'
 
   const message = [
-    ':rotating_light: *NEW SHIPPING CLAIM*',
+    pinkLine,
+    ':rotating_light: *NEW SHIPPING CLAIM* :rotating_light:',
+    '_A new shipping claim has been submitted for review._',
+    pinkLine,
     '',
-    `*Claim:* ${slackSafe(claim.claim_number)}`,
-    `*Order:* ${slackSafe(claim.order_number)}`,
+    '*Claim Details*',
+    '',
+    `*Claim:* \`${slackSafe(claim.claim_number)}\``,
+    `*Order:* \`${slackSafe(claim.order_number)}\``,
     `*Customer:* ${slackSafe(claim.customer_name)}`,
-    `*Claim Type:* ${slackSafe((claim.claim_types || []).join(' / '))}`,
+    `*Claim Type:* _${slackSafe((claim.claim_types || []).join(' / '))}_`,
     `*Fulfilled By:* ${slackSafe(claim.fulfilled_by || 'Not assigned')}`,
     `*Carrier:* ${slackSafe(claim.carrier || 'Unknown')}`,
-    `*Resolution:* ${slackSafe(claim.resolution || 'Pending')}`,
-    `*Root Cause:* ${slackSafe(claim.root_cause || 'Unknown')}`,
-    `*Status:* ${slackSafe(claim.claim_status)}`,
+    `*Resolution:* _${slackSafe(claim.resolution || 'Pending')}_`,
+    `*Root Cause:* _${slackSafe(claim.root_cause || 'Unknown')}_`,
+    `*Status:* *${slackSafe(claim.claim_status)}*`,
     `*Owner:* ${slackSafe(claim.owner || 'Unassigned')}`,
     '',
-    '*Affected Items:*',
+    pinkLine,
+    '',
+    '*Affected Items*',
+    '',
     itemLines,
     '',
-    claimUrl ? `:link: <${claimUrl}|View Claim>` : ':link: View Claim in the Shipping Claims app',
+    pinkLine,
+    claimUrl ? `:link: *<${claimUrl}|View Claim>*` : ':link: *View Claim in the Shipping Claims app*',
+    '_Please review and update the claim status when handled._',
+    pinkLine,
   ].join('\n')
 
   const response = await fetch('https://slack.com/api/chat.postMessage', {
