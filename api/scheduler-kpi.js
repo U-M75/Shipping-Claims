@@ -3,8 +3,7 @@
 // the first day of each month after confirming it works.
 
 import { createClient } from '@supabase/supabase-js'
-import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { createKpiPdf } from '../pdf/kpi-report.js'
 
 function clean(value) { return String(value ?? '').trim() }
 function money(value) { return Number(value || 0) }
@@ -36,73 +35,17 @@ function authorized(req) {
   return header === `Bearer ${secret}` || query === secret
 }
 
-function buildPdf({ monthLabel, rows, metrics, byType, byRoot, topSkus }) {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
-  const pink = [255, 179, 197]
-  const ink = [61, 44, 56]
-  const muted = [130, 115, 126]
-  const dateText = new Date().toLocaleString('en-US')
-
-  doc.setFillColor(...pink)
-  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 8, 'F')
-  doc.setFontSize(20)
-  doc.setTextColor(...ink)
-  doc.text('KSC Shipping Claims KPI Report', 34, 39)
-  doc.setFontSize(10)
-  doc.setTextColor(...muted)
-  doc.text(`${monthLabel} · Generated ${dateText}`, 34, 57)
-
-  autoTable(doc, {
-    startY: 78,
-    margin: { left: 34, right: 34 },
-    theme: 'grid',
-    styles: { fontSize: 9, cellPadding: 6 },
-    headStyles: { fillColor: pink, textColor: ink, fontStyle: 'bold' },
-    head: [['Total Claims', 'Open / Active', 'Pending', 'Resolved', 'Items Affected', 'Claim Value', 'External Claims']],
-    body: [[metrics.total, metrics.open, metrics.pending, metrics.resolved, metrics.itemsAffected, `$${metrics.claimValue.toFixed(2)}`, metrics.external]],
+function buildPdf({ monthLabel, rows, metrics, byType, byRootCause, byResolution, byCarrier, productBreakdown }) {
+  const doc = createKpiPdf({
+    monthLabel,
+    metrics,
+    byType,
+    byRootCause,
+    byResolution,
+    byCarrier,
+    productBreakdown,
+    openClaims: rows,
   })
-
-  let y = (doc.lastAutoTable?.finalY || 125) + 18
-  const sections = [
-    ['Claims by Type', byType.map(row => [row.label, row.value])],
-    ['Claims by Root Cause', byRoot.map(row => [row.label, row.value])],
-    ['Top Affected Products / SKUs', topSkus.map(row => [row.key, row.count, row.qty, `$${row.value.toFixed(2)}`])],
-  ]
-
-  for (const [title, body] of sections) {
-    if (!body.length) continue
-    if (y > 520) { doc.addPage(); y = 40 }
-    doc.setFontSize(12)
-    doc.setTextColor(...ink)
-    doc.text(title, 34, y)
-    autoTable(doc, {
-      startY: y + 8,
-      margin: { left: 34, right: 34 },
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [255, 242, 246], textColor: ink },
-      head: [title === 'Top Affected Products / SKUs' ? ['SKU / Product', 'Claims', 'Qty', 'Value'] : ['Category', 'Count']],
-      body,
-    })
-    y = (doc.lastAutoTable?.finalY || y + 35) + 18
-  }
-
-  if (rows.length) {
-    doc.addPage()
-    doc.setFontSize(15)
-    doc.setTextColor(...ink)
-    doc.text('Open Claims Detail', 34, 39)
-    autoTable(doc, {
-      startY: 56,
-      margin: { left: 28, right: 28 },
-      theme: 'grid',
-      styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', valign: 'top' },
-      headStyles: { fillColor: pink, textColor: ink, fontStyle: 'bold' },
-      head: [['Claim', 'Order', 'Customer', 'Type', 'Status', 'Owner', 'Days Open']],
-      body: rows.map(row => [row.claim_number, row.order_number, row.customer_name, (row.claim_types || []).join(' / '), row.claim_status, row.owner || 'Unassigned', row.days_open]),
-    })
-  }
-
   return Buffer.from(doc.output('arraybuffer'))
 }
 
@@ -167,21 +110,23 @@ export default async function handler(req, res) {
     if (error) throw error
 
     const rows = claims || []
-    const byType = {}, byRoot = {}, skuMap = {}
+    const byType = {}, byRoot = {}, byResolution = {}, byCarrier = {}, skuMap = {}
     let itemsAffected = 0
     let claimValue = 0
     for (const claim of rows) {
       for (const type of claim.claim_types || []) add(byType, type)
       add(byRoot, claim.root_cause)
+      add(byResolution, claim.resolution)
+      add(byCarrier, claim.carrier)
       for (const item of claim.shipping_claim_items || []) {
         const qty = Number(item.quantity || 0)
         const value = qty * money(item.unit_value)
         itemsAffected += qty
         claimValue += value
         const key = item.sku || item.product_name || 'Unknown'
-        if (!skuMap[key]) skuMap[key] = { key, count: 0, qty: 0, value: 0 }
-        skuMap[key].count += 1
-        skuMap[key].qty += qty
+        if (!skuMap[key]) skuMap[key] = { sku: item.sku || '—', product: item.product_name || 'Unspecified product', claims: 0, quantity: 0, value: 0 }
+        skuMap[key].claims += 1
+        skuMap[key].quantity += qty
         skuMap[key].value += value
       }
     }
@@ -209,8 +154,10 @@ export default async function handler(req, res) {
       rows: openRows,
       metrics,
       byType: Object.entries(byType).map(([label, value]) => ({ label, value })),
-      byRoot: Object.entries(byRoot).map(([label, value]) => ({ label, value })),
-      topSkus: Object.values(skuMap).sort((a, b) => b.count - a.count).slice(0, 25),
+      byRootCause: Object.entries(byRoot).map(([label, value]) => ({ label, value })),
+      byResolution: Object.entries(byResolution).map(([label, value]) => ({ label, value })),
+      byCarrier: Object.entries(byCarrier).map(([label, value]) => ({ label, value })),
+      productBreakdown: Object.values(skuMap).sort((a, b) => b.claims - a.claims).slice(0, 50),
     })
     await uploadPdf(token, channel, pdf, `shipping-claims-kpi-${year}-${String(month).padStart(2, '0')}.pdf`)
 

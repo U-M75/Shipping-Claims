@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { createKpiPdf } from '../pdf/kpi-report.js'
 
 const CLAIM_TYPES = ['Missing Item', 'Swapped Item', 'Damaged Item', 'Short Shipment', 'Wrong Quantity', 'Wrong Product', 'Packaging Damage', 'Other']
 const ISSUE_TYPES = CLAIM_TYPES
@@ -45,68 +44,17 @@ function apiJson(url, options) {
 function titleCase(value) { return String(value || '').replace(/\b\w/g, c => c.toUpperCase()) }
 
 function downloadKpiPdf(report, month) {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
-  const ink = [61, 44, 56]
-  const pink = [255, 179, 197]
-  const muted = [130, 115, 126]
   const monthLabel = new Date(`${month}-01T00:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-
-  doc.setFillColor(...pink)
-  doc.rect(0, 0, doc.internal.pageSize.getWidth(), 8, 'F')
-  doc.setFontSize(21)
-  doc.setTextColor(...ink)
-  doc.text('KSC Shipping Claims KPI Report', 34, 40)
-  doc.setFontSize(10)
-  doc.setTextColor(...muted)
-  doc.text(`${monthLabel} · Generated ${new Date().toLocaleString('en-US')}`, 34, 58)
-
-  autoTable(doc, {
-    startY: 78,
-    margin: { left: 34, right: 34 },
-    theme: 'grid',
-    styles: { fontSize: 9, cellPadding: 6 },
-    headStyles: { fillColor: pink, textColor: ink, fontStyle: 'bold' },
-    head: [['Total Claims', 'Open', 'Pending', 'Resolved', 'Items Affected', 'Claim Value', 'External Claims']],
-    body: [[
-      report.metrics.total,
-      report.metrics.open,
-      report.metrics.pending,
-      report.metrics.resolved,
-      report.metrics.itemsAffected,
-      money(report.metrics.claimValue),
-      report.metrics.external,
-    ]],
+  const doc = createKpiPdf({
+    monthLabel,
+    metrics: report.metrics,
+    byType: report.byType || [],
+    byRootCause: report.byRootCause || [],
+    byResolution: report.byResolution || [],
+    byCarrier: report.byCarrier || [],
+    productBreakdown: report.productBreakdown || [],
+    openClaims: report.openClaims || [],
   })
-
-  const sections = [
-    ['Claims by Type', report.byType || []],
-    ['Claims by Root Cause', report.byRootCause || []],
-    ['Claims by Resolution', report.byResolution || []],
-    ['Claims by Carrier', report.byCarrier || []],
-    ['Claims by Fulfilled By', report.byFulfilled || []],
-    ['Affected Products / SKUs', (report.productBreakdown || []).map(row => ({ label: `${row.sku} — ${row.product}`, value: `${row.claims} claim(s) · ${row.quantity} unit(s) · ${money(row.value)}` }))],
-    ['Open Claims', (report.openClaims || []).map(row => ({ label: `${row.claim_number} — ${row.order_number} — ${row.customer_name}`, value: `${row.claim_status} · ${row.days_open} day(s) open` }))],
-  ]
-
-  let y = (doc.lastAutoTable?.finalY || 130) + 24
-  for (const [title, rows] of sections) {
-    if (!rows.length) continue
-    if (y > 500) { doc.addPage(); y = 42 }
-    doc.setFontSize(12)
-    doc.setTextColor(...ink)
-    doc.text(title, 34, y)
-    autoTable(doc, {
-      startY: y + 8,
-      margin: { left: 34, right: 34 },
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [255, 242, 246], textColor: ink },
-      head: [['Category', 'Count']],
-      body: rows.map(row => [row.label, row.value]),
-    })
-    y = (doc.lastAutoTable?.finalY || y + 40) + 20
-  }
-
   doc.save(`shipping-claims-kpi-${month}.pdf`)
 }
 
@@ -162,7 +110,7 @@ function Sidebar({ page, setPage, user, onLogout }) {
     ['dashboard', '⌂', 'Dashboard'], ['submit', '+', 'Submit Claim'], ['claims', '▤', 'All Claims'], ['open', '◷', 'Open Claims'],
     ['external', '↗', 'Vendor/Carrier Claims'], ['recurring', '◈', 'Common Issues'], ['reports', '▥', 'KPI Reports'], ['settings', '⚙', 'System Settings'],
   ]
-  return <aside className="sidebar"><div className="side-brand"><img src="/ksc-logo.png" alt="KSC" /><div><strong>KSC Claims</strong><span>Resolution System</span></div></div><div className="side-nav">{nav.map(([id, icon, label]) => <button key={id} className={page === id ? 'active' : ''} onClick={() => setPage(id)}><span>{icon}</span>{label}</button>)}</div><div className="side-bottom"><div className="user-chip"><div className="avatar">{String(user?.name || 'U').slice(0, 1).toUpperCase()}</div><div><strong>{user?.name || 'Team member'}</strong><span>Internal user</span></div></div><button className="logout-button" onClick={onLogout}>Sign out</button></div></aside>
+  return <aside className="sidebar"><div className="side-brand"><img src="/ksc-logo.png" alt="KSC" /><div><strong>Claims & Resolution</strong><span>Internal operations</span></div></div><div className="side-nav">{nav.map(([id, icon, label]) => <button key={id} className={page === id ? 'active' : ''} onClick={() => setPage(id)}><span>{icon}</span>{label}</button>)}</div><div className="side-bottom"><div className="user-chip"><div className="avatar">{String(user?.name || 'U').slice(0, 1).toUpperCase()}</div><div><strong>{user?.name || 'Team member'}</strong><span>Internal user</span></div></div><button className="logout-button" onClick={onLogout}>Sign out</button></div></aside>
 }
 
 function Header({ title, eyebrow, action }) {
