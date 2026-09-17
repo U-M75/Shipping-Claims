@@ -29,7 +29,7 @@ async function sendSlackClaim(claim, items) {
 
   const base = String(process.env.APP_BASE_URL || '').trim().replace(/\/$/, '')
   const claimUrl = base ? `${base}/?view=claim&id=${encodeURIComponent(claim.id)}` : ''
-  const pinkLine = ':pinkline::pinkline::pinkline::pinkline::pinkline::pinkline::pinkline:'
+  const pinkLine = ':pinkline::pinkline::pinkline::pinkline::pinkline::pinkline::pinkline::pinkline:'
   const itemLines = (items || []).map(item => {
     const itemName = slackSafe(item.sku || item.product_name || 'Item')
     const quantity = slackSafe(item.quantity || 0)
